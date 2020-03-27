@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -44,28 +47,40 @@ func ImportJson(jsonByte []byte) (*API, error) {
 	return &data, nil
 }
 
+type Weather struct {
+	gorm.Model
+	Link string
+	Name string
+}
+
 func main() {
 	// ログ出力 (start)
 	fmt.Println("start")
 
+	// sqlite3にコネクト
+	db, err := gorm.Open("sqlite3", "weather.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// マイグレーション
+	db.AutoMigrate(&Weather{})
+	// テーブル作成
+	db.Table("weathers").CreateTable(&Weather{})
+
 	jsonDataByte, _ := Fetch()
 	convertData, _ := ImportJson(jsonDataByte)
-	fmt.Println(*convertData)
 	for _, pinpointLocation := range convertData.PinpointLocations {
-		fmt.Println(pinpointLocation.Link)
-		fmt.Println(pinpointLocation.Name)
+		w := &Weather{Link: pinpointLocation.Link, Name: pinpointLocation.Name}
+		db.Save(w)
 	}
 
-	// 取得したデータをDBに保存する
-	// DbConnection, _ := sql.Open("sqlite3", ".weather.sql")
-	// cmd := `CREATE TABLE IF NOT EXISTS weather(
-	// 	link STRING,
-	// 	name STRING)
-	// 	`
-	// _, err = DbConnection.Exec(cmd)
-	// if err != nil {
-	// 	log.Fatalln(err)
-	// }
+	// データ取得
+	weather := Weather{}
+	db.Table("weathers").Find(&weather, "id = ?", 2)
+	fmt.Println(weather.Link)
 
 	// ログ出力(end)
+	fmt.Println("end")
 }
