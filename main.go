@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -26,11 +25,7 @@ type PinpointLocation struct {
 
 type PinpointLocations []*PinpointLocation
 
-func main() {
-	var data API
-	// ログ出力 (start)
-	fmt.Println("start")
-
+func Fetch() ([]byte, error) {
 	// APIリクエストする
 	request, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
@@ -38,25 +33,39 @@ func main() {
 	}
 	resp, err := http.DefaultClient.Do(request)
 	responseBody, _ := ioutil.ReadAll(resp.Body)
-	if err := json.Unmarshal(responseBody, &data); err != nil {
-		fmt.Println(err)
+	return responseBody, nil
+}
+
+func ImportJson(jsonByte []byte) (*API, error) {
+	var data API
+	if err := json.Unmarshal(jsonByte, &data); err != nil {
+		return nil, err
 	}
-	fmt.Println(data)
-	for _, post := range data.PinpointLocations {
-		fmt.Println(post.Link)
-		fmt.Println(post.Name)
+	return &data, nil
+}
+
+func main() {
+	// ログ出力 (start)
+	fmt.Println("start")
+
+	jsonDataByte, _ := Fetch()
+	convertData, _ := ImportJson(jsonDataByte)
+	fmt.Println(*convertData)
+	for _, pinpointLocation := range convertData.PinpointLocations {
+		fmt.Println(pinpointLocation.Link)
+		fmt.Println(pinpointLocation.Name)
 	}
 
 	// 取得したデータをDBに保存する
-	DbConnection, _ := sql.Open("sqlite3", ".weather.sql")
-	cmd := `CREATE TABLE IF NOT EXISTS weather(
-		link STRING,
-		name STRING)
-		`
-	_, err = DbConnection.Exec(cmd)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	// DbConnection, _ := sql.Open("sqlite3", ".weather.sql")
+	// cmd := `CREATE TABLE IF NOT EXISTS weather(
+	// 	link STRING,
+	// 	name STRING)
+	// 	`
+	// _, err = DbConnection.Exec(cmd)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
 
 	// ログ出力(end)
 }
