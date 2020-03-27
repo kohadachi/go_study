@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
+	"time"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	_ "github.com/mattn/go-sqlite3"
+	"go.uber.org/zap"
 )
 
 const URL = "http://weather.livedoor.com/forecast/webservice/json/v1?city=400040"
@@ -55,12 +56,13 @@ type Weather struct {
 
 func main() {
 	// ログ出力 (start)
-	fmt.Println("start")
+	logger, _ := zap.NewDevelopment()
+	logger.Info("start", zap.Time("date", time.Now()))
 
 	// sqlite3にコネクト
 	db, err := gorm.Open("sqlite3", "weather.db")
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("start", zap.String("err", err.Error()), zap.Time("now", time.Now()))
 	}
 	defer db.Close()
 
@@ -82,5 +84,5 @@ func main() {
 	fmt.Println(weather.Link)
 
 	// ログ出力(end)
-	fmt.Println("end")
+	logger.Info("end", zap.Time("date", time.Now()))
 }
